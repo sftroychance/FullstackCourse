@@ -1,7 +1,8 @@
-const Filter = ({searchFilter, filterHandler}) => {
+const Filter = ({searchFilter, handleSearchFilter}) => {
   return (
     <div>
-      Filter shown with: <input value={searchFilter} onChange={filterHandler} />
+      Filter shown with: <input value={searchFilter} onChange={handleSearchFilter} />
+
     </div>
   )
 }

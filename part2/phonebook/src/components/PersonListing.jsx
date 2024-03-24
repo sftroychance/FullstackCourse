@@ -1,5 +1,4 @@
 const Person = ({name, number, id, handleDelete}) => {
-  console.log(name, id);
   return (
     <tr>
       <td>{name}</td>
@@ -14,15 +13,14 @@ const PersonListing = ({persons, handleDelete}) => {
     <table>
       <tbody>
         {persons.map(({name, number, id}) => {
-          <Person
+          return <Person
             key={id}
             name={name}
             id={id}
             number={number}
             handleDelete={handleDelete}
           />
-          })
-        }
+        })}
       </tbody>
     </table>
   )

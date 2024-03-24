@@ -3,47 +3,92 @@ import phonebookAPI from './services/phonebookAPI.js'
 import Filter from './components/Filter.jsx';
 import NewPerson from './components/NewPerson.jsx';
 import PersonListing from './components/PersonListing.jsx';
+import Notification from './components/Notification.jsx';
 
 const App = () => {
-  const [persons, setPersons] = useState([])
-  const [newName, setNewName] = useState('')
-  const [newNumber, setNewNumber] = useState('')
-  const [searchFilter, setSearchFilter] = useState('')
+  const [persons, setPersons] = useState([]);
+  const [newName, setNewName] = useState('');
+  const [newNumber, setNewNumber] = useState('');
+  const [searchFilter, setSearchFilter] = useState('');
+  const [statusMessage, setStatusMessage] = useState(null);
+  const [statusType, setStatusType] = useState(null);
 
-  const nameHandler = (e) => {
+  const handleNameChange = (e) => {
     setNewName(e.target.value);
   }
 
-  const numberHandler = (e) => {
+  const handleNumberChange = (e) => {
     setNewNumber(e.target.value);
   }
 
-  const filterHandler = (e) => {
+  const handleSearchFilter = (e) => {
     setSearchFilter(e.target.value);
   }
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // attempt to find person in persons array
-    // if found, check whether number is the same also
-    // if so, alert that the entry already exists
-    // otherwise, ask if the number should be updated (phonebookAPI.updatePerson)
-    if (persons.map(({name}) => name).includes(newName)) {
-      alert(`${newName} is already in the phone book!`);
-      return;
+    const newPerson = {name: newName, number: newNumber};
+    const existingPerson = persons.find(({name}) => name === newName);
+
+    if (existingPerson) {
+      updatePerson(existingPerson, newPerson);
+    } else {
+      addPerson(newPerson);
     }
 
-    const newPerson = {name: newName, number: newNumber};
+    setNewName('');
+    setNewNumber('');
+ }
 
+  const displayStatus = (message, status) => {
+    setStatusMessage(message);
+    setStatusType(status);
+
+    setTimeout(() => {
+      setStatusMessage(null);
+      setStatusType(null);
+    }, 5000);
+  }
+
+  const updatePerson = (existingPerson, newPerson) => {
+    if (existingPerson.number === newNumber) {
+      const message = `An entry for ${existingPerson.name} already exists.`;
+      displayStatus(message, 'error');
+
+      return;
+    } else {
+      const message = `Do you want to change the number for ${existingPerson.name} from ${existingPerson.number} to ${newNumber}?`;
+      if (confirm(message)) {
+        phonebookAPI
+          .updatePerson(existingPerson.id, newPerson)
+          .then(updatedPerson => {
+            setPersons(persons.map(person => person.id === existingPerson.id ? updatedPerson : person));
+            displayStatus(`${existingPerson.name} updated.`, 'info');
+          })
+          .catch(error => {
+            if (error.response.status === 404) {
+              displayStatus(`${existingPerson.name} was previously deleted.`, 'error');
+            } else {
+              displayStatus(`Update error: ${error.message}`, 'error');
+            }
+          });
+
+        return;
+      }
+    }
+  }
+
+  const addPerson = (newPerson) => {
     phonebookAPI
       .addPerson(newPerson)
       .then(addedPerson => {
         setPersons(persons.concat(addedPerson));
-        setNewName('');
-        setNewNumber('');
+        displayStatus(`${addedPerson.name} added.`, 'info');
       })
-      .catch(error => alert('error ' + error.message));
+      .catch(error => {
+        displayStatus(`Add record error: ${error.message}`, 'error');
+      });
   }
 
   const handleDelete = (targetID) => {
@@ -54,8 +99,15 @@ const App = () => {
         .deletePerson(targetID)
         .then(({id}) => {
           setPersons(persons.filter(person => person.id !== id));
+          displayStatus(`${name} deleted.`, 'info');
         })
-        .catch(error => alert('error ' + error.message));
+        .catch(error => {
+          if (error.response.status === 404) {
+            displayStatus(`${name} was previously deleted.`, 'error');
+          } else {
+            displayStatus(`Delete error: ${error.message}`, 'error');
+          }
+        });
     }
   }
 
@@ -67,24 +119,27 @@ const App = () => {
     phonebookAPI
       .getList()
       .then(listData => {
-        console.log(listData)
         setPersons(listData)
       })
-      .catch(error => alert('error ' + error.message));
+      .catch(error => {
+        displayStatus(`Data retrieval error: ${error.message}`, 'error');
+      });
     } , []);
+
 
   return (
     <div>
+      <Notification message={statusMessage} status={statusType} />
       <h2>Phonebook</h2>
-      <Filter filterHandler={filterHandler} searchFilter={searchFilter} />
+      <Filter handleSearchFilter={handleSearchFilter}
+        searchFilter={searchFilter} />
 
       <h2>Add new entry:</h2>
-      <NewPerson
-        handleSubmit={handleSubmit}
+      <NewPerson handleSubmit={handleSubmit}
         newName={newName}
-        nameHandler={nameHandler}
+        handleNameChange={handleNameChange}
         newNumber={newNumber}
-        numberHandler={numberHandler}
+        handleNumberChange={handleNumberChange}
       />
 
       <h2>Numbers</h2>
