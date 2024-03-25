@@ -97,8 +97,8 @@ const App = () => {
     if (confirm(`Delete ${name}?`)) {
       phonebookAPI
         .deletePerson(targetID)
-        .then(({id}) => {
-          setPersons(persons.filter(person => person.id !== id));
+        .then(response => {
+          setPersons(persons.filter(person => person.id !== targetID));
           displayStatus(`${name} deleted.`, 'info');
         })
         .catch(error => {
@@ -143,7 +143,7 @@ const App = () => {
       />
 
       <h2>Numbers</h2>
-      <PersonListing persons={filteredPersons} handleDelete={handleDelete} />
+      <PersonListing persons={filteredPersons} handleDelete={handleDelete} allPersons={persons}/>
     </div>
   )
 }

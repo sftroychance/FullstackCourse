@@ -1,0 +1,16 @@
+{
+  "name": "nodeserver",
+  "version": "0.0.1",
+  "description": "demo of http server in node",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "author": "troy c graves",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
