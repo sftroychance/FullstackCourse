@@ -1,20 +1,14 @@
+import 'dotenv/config';
+import Person from './models/person.js'
 import express from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
+
 const PORT = process.env.PORT || 3001;
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-// discarded solution: adds an extra hyphen at end of log line
-// morgan.token('body', (req) => {
-//   if (req.method === 'POST') {
-//     return JSON.stringify(req.body);
-//   }
-// })
-
-// app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'));
 
 app.use(morgan((tokens, req, res) => {
   let log = [
@@ -32,55 +26,41 @@ app.use(morgan((tokens, req, res) => {
   return log.join(' ');
 }));
 
-let persons = [
-  {
-    "id": 1,
-    "name": "Arto Hellas",
-    "number": "040-123456"
-  },
-  {
-    "id": 2,
-    "name": "Ada Lovelace",
-    "number": "39-44-5323523"
-  },
-  {
-    "id": 3,
-    "name": "Dan Abramov",
-    "number": "12-43-234345"
-  },
-  {
-    "id": 4,
-    "name": "Mary Poppendieck",
-    "number": "39-23-6423122"
-  }
-];
-
 app.get('/api/persons', (req, res) => {
-  res.json(persons);
+  Person
+    .find({})
+    .then(people => res.json(people))
+    .catch(error => console.log('Error retrieving persons:', error.message));
 })
 
 app.get('/api/persons/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const person = persons.find(person => person.id === id);
-
-  if (person) {
-    res.json(person)
-  } else {
-    res.status(404).end();
-  }
+  Person
+    .findById(req.params.id)
+    .then(note => {
+      if (note) {
+        console.log('note', note);
+        res.json(note);
+      } else {
+        res.status(404).end();
+      }
+    })
+    .catch(err => {
+      console.log(err)
+      res.status(400).send({ error: 'malformatted id' })
+    });
 })
 
 app.delete('/api/persons/:id', (req, res) => {
-  const id = Number(req.params.id);
-  persons = persons.filter(person => person.id !== id);
-
-  res.status(204).end();
+  Person
+    .findByIdAndDelete(req.params.id)
+    .then(_ => {
+      res.status(204).end()
+    })
+    .catch(error => console.log(error))
 })
 
 app.post('/api/persons', (req, res) => {
   const newPerson = {...req.body};
-
-  const foundPerson = persons.find(person => person.name === newPerson.name);
 
   if (!newPerson.name || !newPerson.number) {
     return res.status(400).json({
@@ -88,26 +68,43 @@ app.post('/api/persons', (req, res) => {
     });
   }
 
-  if (foundPerson) {
-    return res.status(409).json({
-      error: 'Name must be unique'
+  const person = new Person(newPerson);
+
+  person
+    .save()
+    .then(saved => res.json(saved))
+    .catch(error => {
+      console.log('Error adding person:', error.message)
+      res.status(500)
     });
-  }
+})
 
-  newPerson.id = Math.floor(Math.random() * 25000);
+app.put('/api/persons/:id', (req, res) => {
+  const person = req.body;
 
-  persons = persons.concat(newPerson);
-  res.json(newPerson);
+  Person
+    .findByIdAndUpdate(req.params.id, person, { new: true })
+    .then(updatedNote => {
+      res.json(updatedNote)
+    })
+    .catch(error => console.log(error))
 })
 
 app.get('/info', (req, res) => {
-  const message = `
-    <p>Phonebook has info for ${persons.length} people.</p>
-    <p>${Date()}</p>
-  `;
+  let message;
 
-  res.set('Content-Type', 'text/html');
-  res.send(message);
+  Person
+    .countDocuments({})
+    .then(count => {
+      message = `
+        <p>Phonebook has info for ${count} people.</p>
+        <p>${Date()}</p>
+      `;
+
+      res.set(`Content-Type`, `text/html`);
+      res.send(message);
+    })
+    .catch(error => console.log(error))
 })
 
 app.listen(PORT, () => {
